@@ -166,10 +166,11 @@ def data_into_mango(channel_id):
     coll1.insert_one({"channel_information":ch_details,"playlist_information":pl_details,"video_information":vi_details,
                      "comment_information":com_details})
     
-    return "upload completed successfully"
+    res=f"upload completed successfully for {channel_id}"
+    return res
 
 #table creation for channel
-def channel_table():
+def channel_table(channel_name_s):
     mysqldb = sql.connect(host="localhost",
                     user="root",
                     password="Keerthi@12345",
@@ -177,10 +178,6 @@ def channel_table():
                     )
 
     mycursor = mysqldb.cursor()
-
-    drop_query="DROP TABLE if exists channnels"
-    mycursor.execute(drop_query)
-    mysqldb.commit()
 
     try:
         create_query= '''create table if not exists channels(Channel_Name varchar(255),
@@ -193,15 +190,19 @@ def channel_table():
                                                         )'''
         mycursor.execute(create_query)
     except:
-        print("Table already created")
-    ch_list=[]
-    db=client["Youtube_DB"]
-    coll1=db["channel_details"]
-    for ch in coll1.find({},{"_id":0,"channel_information":1}):
-        ch_list.append(ch["channel_information"])
-    df=pd.DataFrame(ch_list)
+        print("Channel Table already created")
 
-    for index, row in df.iterrows():
+   
+    single_channel_details= []
+    mydb = client['Youtube_DB']
+    coll1=mydb["channel_details"]
+    for ch_data in coll1.find({"channel_information.Channel_Name":channel_name_s},{"_id":0}):
+        single_channel_details.append(ch_data["channel_information"])
+
+    df_single_channel= pd.DataFrame(single_channel_details)
+
+
+    for index, row in df_single_channel.iterrows():
         insert_query = '''INSERT INTO channels (Channel_Name,
                                     Channel_Id,
                                     Subscription_Count,
@@ -224,11 +225,12 @@ def channel_table():
             mycursor.execute(insert_query,values)
             mysqldb.commit()
         except:
-            print("channel data already inserted")
+            news = f"Channel details of {channel_name_s} already exists"
+            return news
 
 #playlist table creation
 
-def playlist_table():
+def playlist_table(channel_name_s):
     mysqldb = sql.connect(host="localhost",
                         user="root",
                         password="Keerthi@12345",
@@ -236,10 +238,6 @@ def playlist_table():
                         )
 
     mycursor = mysqldb.cursor()
-
-    drop_query="DROP TABLE if exists playlits"
-    mycursor.execute(drop_query)
-    mysqldb.commit()
 
     create_query= '''create table if not exists playlists(PlaylistId varchar(100) Primary key,
                                                             Title varchar(100),
@@ -249,23 +247,20 @@ def playlist_table():
                                                             VideoCount INT 
                                                             )'''
     
-    
-    try:
-        mycursor.execute(create_query)
-        mysqldb.commit()
-    except:
-        print("Table already created")
 
-    pl_list=[]
+    mycursor.execute(create_query)
+    mysqldb.commit()
+
+    single_channel_details= []
     db=client["Youtube_DB"]
-    coll1=db["channel_details"]
-    for pl in coll1.find({},{"_id":0,"playlist_information":1}):
-        for i in range(len(pl["playlist_information"])):
-            pl_list.append(pl["playlist_information"][i])
-    df1=pd.DataFrame(pl_list)
+    coll1=mydb["channel_details"]
+    for ch_data in coll1.find({"channel_information.Channel_Name":channel_name_s},{"_id":0}):
+        single_channel_details.append(ch_data["playlist_information"])
+
+    df_single_channel= pd.DataFrame(single_channel_details[0])
 
 
-    for index, row in df1.iterrows():
+    for index, row in df_single_channel.iterrows():
             insert_query = '''INSERT INTO playlists (PlaylistId,
                                                     Title,
                                                     ChannelId,
@@ -283,11 +278,10 @@ def playlist_table():
                     row['VideoCount']
                     )
             
-            try:
-                mycursor.execute(insert_query,values)
-                mysqldb.commit()
-            except:
-                print("playlist data already inserted")
+            
+            mycursor.execute(insert_query,values)
+            mysqldb.commit()
+    
 
 #fun to covert duration into sec             
 def duration_conv(duration_str):
@@ -320,7 +314,7 @@ def duration_conv(duration_str):
     return total_seconds
 
 #video table creation
-def video_table():
+def video_table(channel_name_s):
     mysqldb = sql.connect(host="localhost",
                             user="root",
                             password="Keerthi@12345",
@@ -328,10 +322,6 @@ def video_table():
                             )
 
     mycursor = mysqldb.cursor()
-
-    drop_query="DROP TABLE if exists videos"
-    mycursor.execute(drop_query)
-    mysqldb.commit()
 
     create_query= '''create table if not exists videos(
                             Channel_Name varchar(255),
@@ -350,24 +340,18 @@ def video_table():
                             Definition varchar(50),
                             Caption_Status varchar(50)                                                                              
                             )'''
-    try:
-        
-        mycursor.execute(create_query)
-        mysqldb.commit()
-    except:
-        print("table already created")
+    mycursor.execute(create_query)
+    mysqldb.commit()
+    
 
-    vd_list=[]
-    db=client["Youtube_DB"]
-    coll1=db["channel_details"]
-    for vd in coll1.find({},{"_id":0,"video_information":1}):
-        for i in range(len(vd["video_information"])):
-            vd_list.append(vd["video_information"][i])
+    single_channel_details= []
+    coll1=mydb["channel_details"]
+    for ch_data in coll1.find({"channel_information.Channel_Name":channel_name_s},{"_id":0}):
+        single_channel_details.append(ch_data["video_information"])
 
-    df2=pd.DataFrame(vd_list)
+    df_single_channel= pd.DataFrame(single_channel_details[0])
 
-    mycursor = mysqldb.cursor()
-    for index, row in df2.iterrows():
+    for index, row in df_single_channel.iterrows():
                 insert_query = '''INSERT INTO videos values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
                 published_date= datetime.strptime(row['Published_Date'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%d %H:%M:%S')
                 duration=duration_conv(row['Duration'])
@@ -389,15 +373,13 @@ def video_table():
                         row['Caption_Status']
                     )
                 
-                try:
-                    
-                    mycursor.execute(insert_query,values)
-                    mysqldb.commit()
-                except:
-                    print("video data inserted")
+                
+                mycursor.execute(insert_query,values)
+                mysqldb.commit()
+               
 
 #table creation for comments
-def comment_table():
+def comment_table(channel_name_s):
     mysqldb = sql.connect(host="localhost",
                         user="root",
                         password="Keerthi@12345",
@@ -405,10 +387,6 @@ def comment_table():
                         )
 
     mycursor = mysqldb.cursor()
-
-    drop_query="DROP TABLE if exists comments"
-    mycursor.execute(drop_query)
-    mysqldb.commit()
 
     create_query= '''create table if not exists comments(Comment_Id varchar(255) primary key,
                                                 Video_Id varchar(255),
@@ -418,29 +396,18 @@ def comment_table():
                                                             )'''
     
     
-    try:
-        mycursor.execute(create_query)
-        mysqldb.commit()
-    except:
-        print("Table already created")
     
-    cm_list=[]
-    db=client["Youtube_DB"]
-    coll1=db["channel_details"]
-    for cm in coll1.find({},{"_id":0,"comment_information":1}):
-        for i in range(len(cm["comment_information"])):
-            cm_list.append(cm["comment_information"][i])
+    mycursor.execute(create_query)
+    mysqldb.commit()
+    
+    single_channel_details= []
+    coll1=mydb["channel_details"]
+    for ch_data in coll1.find({"channel_information.Channel_Name":channel_name_s},{"_id":0}):
+        single_channel_details.append(ch_data["comment_information"])
 
-    df3=pd.DataFrame(cm_list)
+    df_single_channel= pd.DataFrame(single_channel_details[0])
 
-    mysqldb = sql.connect(host="localhost",
-                        user="root",
-                        password="Keerthi@12345",
-                        database= "youtube_db",
-                        )
-    mycursor = mysqldb.cursor()
-
-    for index, row in df3.iterrows():
+    for index, row in df_single_channel.iterrows():
                 insert_query = '''INSERT INTO comments (Comment_Id ,
                                                         Video_Id ,
                                                         Comment_Text ,
@@ -460,13 +427,17 @@ def comment_table():
                 mycursor.execute(insert_query,values)
                 mysqldb.commit()
             
-def tables():
-    channel_table()
-    playlist_table()
-    video_table()
-    comment_table()
+def tables(channel_name):
 
-    return "tables successfully created"     
+    news= channel_table(channel_name)
+    if news:
+        return news
+    else:  
+        playlist_table(channel_name)
+        video_table(channel_name)
+        comment_table(channel_name)
+
+        return "Tables successfully created"     
 
 col1, col2 = st.columns(2)
 with col1: 
@@ -481,7 +452,7 @@ with col1:
         for channel in channels:
             ch_ids=[]
             db = client["Youtube_DB"]
-            coll1 = db["channel_details"]
+            coll1 = mydb["channel_details"]
             for ch_data in coll1.find({},{"_id":0,"channel_information":1}):
                     ch_ids.append(ch_data["channel_information"]["Channel_Id"])
             if channel in ch_ids:
@@ -492,8 +463,15 @@ with col1:
     st.subheader(':violet[DATA MIGRATION ]')
     st.write(" To Migrate the data to MYSQL. Click the below **Migrate to sql** Button")
 
+    all_channels= []
+    coll1=mydb["channel_details"]
+    for ch_data in coll1.find({},{"_id":0,"channel_information":1}):
+        all_channels.append(ch_data["channel_information"]["Channel_Name"])
+        
+    unique_channel= st.selectbox("Select the Channel",all_channels)
+
     if st.button("Migrate to sql"):
-        Table=tables()
+        Table=tables(unique_channel)
         st.success(Table)
 with col2:
     
