@@ -15,7 +15,7 @@ st.set_page_config(page_title= "Youtube Data Harvesting and Warehousing",
 st.title(":red[Youtube Data Harvesting and Warehousing]")
 
 # Calling API
-api_key ="AIzaSyB073-2rf6yfA2JBbJMLYFhUphKUJmQPe8"
+api_key =""
 youtube = build('youtube','v3',developerKey=api_key)
 
 
